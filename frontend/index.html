@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Investment Portfolio</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+</head>
+
+<body>
+  <h1>&gt; portfolio_</h1>
+
+  <section class="panel">
+    <h2>Allocation</h2>
+    <div class="allocation-row">
+      <div class="allocation-chart-container">
+        <canvas id="allocation-chart" width="300" height="300"></canvas>
+      </div>
+      <div id="allocation-stats" class="allocation-stats"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Monthly Pick</h2>
+    <p class="reason">Scores your current holdings + watchlist for growth potential (analyst targets, distance from all-time-high for crypto, momentum, and the confluence signal) and picks the top one for your next buy. A heuristic, not investment advice.</p>
+    <button id="recommend-btn">Find this month's pick</button>
+    <div id="recommend-result"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Portfolio Value</h2>
+    <div class="chart-controls">
+      <div class="timeframe-tabs">
+        <button data-timeframe="30" class="value-timeframe-btn">1M</button>
+        <button data-timeframe="90" class="value-timeframe-btn">3M</button>
+        <button data-timeframe="180" class="value-timeframe-btn">6M</button>
+        <button data-timeframe="365" class="value-timeframe-btn active">1Y</button>
+      </div>
+    </div>
+    <div class="price-chart-container">
+      <canvas id="value-chart" width="800" height="300"></canvas>
+    </div>
+    <p id="value-empty" class="reason" style="display:none;">Building history — check back after using the app for a few days.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Performance</h2>
+    <div class="chart-controls">
+      <div class="category-tabs">
+        <button data-category="stock" class="category-tab active">Stocks</button>
+        <button data-category="fund" class="category-tab">Funds</button>
+        <button data-category="crypto" class="category-tab">Crypto</button>
+      </div>
+      <div class="timeframe-tabs">
+        <button data-timeframe="30" class="timeframe-btn">1M</button>
+        <button data-timeframe="90" class="timeframe-btn">3M</button>
+        <button data-timeframe="180" class="timeframe-btn">6M</button>
+        <button data-timeframe="365" class="timeframe-btn active">1Y</button>
+      </div>
+    </div>
+    <div class="price-chart-container">
+      <canvas id="performance-chart" width="800" height="400"></canvas>
+    </div>
+    <p id="performance-currency-note" class="reason"></p>
+    <p id="performance-empty" class="reason" style="display:none;">No holdings in this category yet.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Holdings</h2>
+    <table id="holdings-table">
+      <thead>
+        <tr>
+          <th data-sort="symbol">Symbol</th>
+          <th data-sort="category">Type</th>
+          <th data-sort="quantity">Qty</th>
+          <th data-sort="avg_price">Avg Price</th>
+          <th data-sort="latest_price">Latest</th>
+          <th data-sort="value">Value</th>
+          <th data-sort="gain">Gain/Loss</th>
+          <th data-sort="signal">Signal</th>
+          <th data-sort="reason">Reason</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <form id="holding-form">
+      <input name="symbol" placeholder="SYMBOL" required>
+      <select name="asset_type">
+        <option value="stock">stock</option>
+        <option value="crypto">crypto</option>
+      </select>
+      <input name="quantity" type="number" step="any" placeholder="qty" required>
+      <input name="avg_price" type="number" step="any" placeholder="avg price" required>
+      <button type="submit">add holding</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Watchlist</h2>
+    <table id="watchlist-table">
+      <thead>
+        <tr>
+          <th data-sort="symbol">Symbol</th>
+          <th data-sort="asset_type">Type</th>
+          <th data-sort="latest_price">Latest</th>
+          <th data-sort="signal">Signal</th>
+          <th data-sort="reason">Reason</th>
+          <th data-sort="note">Note</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <form id="watchlist-form">
+      <input name="symbol" placeholder="SYMBOL" required>
+      <select name="asset_type">
+        <option value="stock">stock</option>
+        <option value="crypto">crypto</option>
+      </select>
+      <input name="note" placeholder="note (optional)">
+      <button type="submit">add to watchlist</button>
+    </form>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

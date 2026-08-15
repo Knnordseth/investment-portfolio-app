@@ -1,0 +1,8 @@
+backend/portfolio.db
+backend/.env
+backend/certs/windows_ca_bundle.pem
+__pycache__/
+*.pyc
+.venv/
+venv/
+.claude/
