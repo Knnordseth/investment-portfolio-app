@@ -1,6 +1,12 @@
-"""Import portfolio data from Nordnet CSV export."""
+"""Import portfolio data from Nordnet CSV export.
+
+Run with: python import_portfolio.py path/to/export.csv
+Export it from Nordnet: Portfolio -> Transactions -> Export (choose the tab-separated,
+UTF-16 "per position" format).
+"""
 
 import csv
+import sys
 from datetime import datetime
 import db
 
@@ -104,4 +110,6 @@ def import_portfolio(csv_path):
 
 
 if __name__ == "__main__":
-    import_portfolio(r"C:\Users\tande\Downloads\nordnet-ostoerittain.csv")
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python import_portfolio.py path/to/nordnet-export.csv")
+    import_portfolio(sys.argv[1])

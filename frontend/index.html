@@ -12,20 +12,27 @@
 <body>
   <h1>&gt; portfolio_</h1>
 
-  <section class="panel">
-    <h2>Allocation</h2>
-    <div class="allocation-row">
-      <div class="allocation-chart-container">
-        <canvas id="allocation-chart" width="300" height="300"></canvas>
+  <div class="top-row">
+    <section class="panel allocation-panel">
+      <h2>Allocation</h2>
+      <div class="allocation-row">
+        <div class="allocation-chart-container">
+          <canvas id="allocation-chart" width="300" height="300"></canvas>
+        </div>
+        <div id="allocation-stats" class="allocation-stats"></div>
       </div>
-      <div id="allocation-stats" class="allocation-stats"></div>
-    </div>
-  </section>
+    </section>
+
+    <section class="panel real-estate-panel">
+      <h2>Real Estate</h2>
+      <div id="real-estate-stats" class="allocation-stats"></div>
+    </section>
+  </div>
 
   <section class="panel">
-    <h2>Monthly Pick</h2>
-    <p class="reason">Scores your current holdings + watchlist for growth potential (analyst targets, distance from all-time-high for crypto, momentum, and the confluence signal) and picks the top one for your next buy. A heuristic, not investment advice.</p>
-    <button id="recommend-btn">Find this month's pick</button>
+    <h2>Priority Pick</h2>
+    <p class="reason">Scores your current holdings + watchlist for growth potential (analyst targets, momentum, and the confluence signal) and picks the top one to prioritize buying next. A heuristic, not investment advice.</p>
+    <button id="recommend-btn">Re-run</button>
     <div id="recommend-result"></div>
   </section>
 
@@ -91,9 +98,11 @@
       <select name="asset_type">
         <option value="stock">stock</option>
         <option value="crypto">crypto</option>
+        <option value="real_estate">real estate</option>
       </select>
       <input name="quantity" type="number" step="any" placeholder="qty" required>
       <input name="avg_price" type="number" step="any" placeholder="avg price" required>
+      <input name="annual_growth_pct" type="number" step="any" placeholder="est. %/yr (optional)">
       <button type="submit">add holding</button>
     </form>
   </section>

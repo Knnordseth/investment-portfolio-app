@@ -44,20 +44,16 @@ def score_candidate(symbol: str, category: str) -> dict | None:
         score += analyst_upside_pct
         reasons.append(f"analyst target implies {analyst_upside_pct:+.1f}% upside")
 
-    ath_recovery_pct = None
-    if category == "crypto" and fund_data.get("available") and fund_data.get("ath") and current_price:
-        ath_recovery_pct = round((fund_data["ath"] / current_price - 1) * 100, 2)
-        score += ath_recovery_pct * 0.3  # speculative vs. an analyst target — discounted accordingly
-        reasons.append(f"{ath_recovery_pct:+.1f}% below its all-time high")
-
     if confluence and confluence.action != "hold" and confluence.confidence > 0:
         bonus = confluence.confidence * 15
         score += bonus if confluence.action == "buy" else -bonus
         reasons.append(f"confluence signal is {confluence.action} — {confluence.reason}")
 
-    # Last-resort signal only when nothing fundamentals-based is available (e.g. a crypto
-    # with no CoinGecko match), so every candidate has at least one reason behind its score.
-    if analyst_upside_pct is None and ath_recovery_pct is None:
+    # Crypto has no analyst target, and distance-from-all-time-high turned out to be a bad
+    # proxy for "good bet" — it just rewarded whatever crashed hardest. Momentum + the
+    # confluence signal are what's left to go on for crypto; for stocks/funds this is the
+    # last-resort signal only when there's no analyst target at all.
+    if analyst_upside_pct is None:
         window = closes.tail(30)
         if len(window) > 1:
             momentum_pct = round((float(window.iloc[-1]) / float(window.iloc[0]) - 1) * 100, 2)
@@ -90,6 +86,6 @@ def recommend(candidates: list[dict]) -> dict:
     return {
         "pick": scored[0] if scored else None,
         "ranked": scored,
-        "disclaimer": "Heuristic score from analyst targets, distance from all-time high (crypto), recent momentum, "
-                       "and the confluence signal — not investment advice.",
+        "disclaimer": "Heuristic score from analyst targets, recent momentum, and the confluence signal — "
+                       "not investment advice.",
     }

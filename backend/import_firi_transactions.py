@@ -2,9 +2,13 @@
 
 This is intentionally short: the exported CSV is a transaction ledger, not an order book.
 We only need Action + Currency + Amount to calculate net position per asset.
+
+Run with: python import_firi_transactions.py path/to/transactions.csv
+Export it from Firi: Account -> Transaction history -> Export CSV.
 """
 
 import csv
+import sys
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -97,5 +101,6 @@ def import_from_csv(csv_path):
 
 
 if __name__ == "__main__":
-    csv_path = Path(r"C:\Users\tande\Downloads\2021-01-01 00_00_01-2026-12-31 23_59_59_transactions.csv")
-    import_from_csv(csv_path)
+    if len(sys.argv) != 2:
+        sys.exit("Usage: python import_firi_transactions.py path/to/transactions.csv")
+    import_from_csv(Path(sys.argv[1]))

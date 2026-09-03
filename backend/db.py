@@ -11,12 +11,13 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS holdings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     symbol TEXT NOT NULL,
-    asset_type TEXT NOT NULL CHECK (asset_type IN ('stock', 'crypto')),
-    category TEXT CHECK (category IN ('stock', 'fund', 'crypto')) DEFAULT 'stock',
+    asset_type TEXT NOT NULL CHECK (asset_type IN ('stock', 'crypto', 'real_estate')),
+    category TEXT CHECK (category IN ('stock', 'fund', 'crypto', 'real_estate')) DEFAULT 'stock',
     quantity REAL NOT NULL,
     avg_price REAL NOT NULL,
     nordnet_market_value REAL DEFAULT 0,
     nordnet_last_updated TEXT,
+    annual_growth_pct REAL,
     added_at TEXT NOT NULL
 );
 
@@ -55,20 +56,41 @@ def get_connection():
         conn.close()
 
 
+def _migrate(conn: sqlite3.Connection):
+    """SQLite can't ALTER a CHECK constraint or column set in place, so a schema change
+    that widens either (like adding the 'real_estate' asset_type/category, or the
+    annual_growth_pct column) needs the rebuild-and-copy dance instead."""
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(holdings)")}
+    if "annual_growth_pct" in columns:
+        return
+
+    conn.execute("ALTER TABLE holdings RENAME TO holdings_old")
+    conn.executescript(SCHEMA)
+    conn.execute("""
+        INSERT INTO holdings (id, symbol, asset_type, category, quantity, avg_price,
+                               nordnet_market_value, nordnet_last_updated, added_at)
+        SELECT id, symbol, asset_type, category, quantity, avg_price,
+               nordnet_market_value, nordnet_last_updated, added_at
+        FROM holdings_old
+    """)
+    conn.execute("DROP TABLE holdings_old")
+
+
 def init_db():
     with get_connection() as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
 
 
 def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def add_holding(symbol: str, asset_type: str, quantity: float, avg_price: float, category: str = "stock", nordnet_market_value: float = 0, nordnet_last_updated: str = None) -> int:
+def add_holding(symbol: str, asset_type: str, quantity: float, avg_price: float, category: str = "stock", nordnet_market_value: float = 0, nordnet_last_updated: str = None, annual_growth_pct: float = None) -> int:
     with get_connection() as conn:
         cur = conn.execute(
-            "INSERT INTO holdings (symbol, asset_type, category, quantity, avg_price, nordnet_market_value, nordnet_last_updated, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (symbol.upper(), asset_type, category, quantity, avg_price, nordnet_market_value, nordnet_last_updated, _now()),
+            "INSERT INTO holdings (symbol, asset_type, category, quantity, avg_price, nordnet_market_value, nordnet_last_updated, annual_growth_pct, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (symbol.upper(), asset_type, category, quantity, avg_price, nordnet_market_value, nordnet_last_updated, annual_growth_pct, _now()),
         )
         return cur.lastrowid
 

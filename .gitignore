@@ -1,4 +1,7 @@
 backend/portfolio.db
+backend/portfolio.db-journal
+backend/portfolio.db-wal
+backend/portfolio.db-shm
 backend/.env
 backend/certs/windows_ca_bundle.pem
 __pycache__/

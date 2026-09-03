@@ -297,13 +297,35 @@ async function loadAllocation() {
   const res = await fetch(`${API}/allocation`);
   const data = await res.json();
 
-  // Update stats
-  const statsHtml = `<div><strong>Total Value:</strong> ${data.total_value_nok.toLocaleString('no-NO', { maximumFractionDigits: 0 })} NOK</div>`;
+  // Update stats — this reflects the tradeable portfolio only (stock/fund/crypto);
+  // real estate is shown in its own panel and rolled into Net Worth instead.
+  const statsHtml = `<div><strong>Portfolio Value:</strong> ${data.total_value_nok.toLocaleString('no-NO', { maximumFractionDigits: 0 })} NOK</div>`;
   const categoryStats = Object.entries(data.by_category)
-    .map(([cat, info]) => `<div><strong>${cat.toUpperCase()}:</strong> ${info.value.toLocaleString('no-NO', { maximumFractionDigits: 0 })} NOK (${info.percent.toFixed(1)}%) - ${info.count} assets</div>`)
+    .map(([cat, info]) => `<div><strong>${cat.replace("_", " ").toUpperCase()}:</strong> ${info.value.toLocaleString('no-NO', { maximumFractionDigits: 0 })} NOK (${info.percent.toFixed(1)}%) - ${info.count} assets</div>`)
     .join("");
 
   document.getElementById("allocation-stats").innerHTML = statsHtml + categoryStats;
+
+  // Real estate panel: no charts here, just the numbers — real estate value,
+  // the rest of the portfolio, how net worth splits between the two, the total,
+  // and the predicted appreciation.
+  const reStats = document.getElementById("real-estate-stats");
+  if (data.real_estate && data.real_estate.count > 0) {
+    const growth = data.real_estate.est_annual_growth_pct != null
+      ? `${data.real_estate.est_annual_growth_pct >= 0 ? "+" : ""}${data.real_estate.est_annual_growth_pct.toFixed(1)}%/yr`
+      : "-";
+    const nok = (v) => v.toLocaleString('no-NO', { maximumFractionDigits: 0 });
+    const rePct = data.net_worth_nok > 0 ? (data.real_estate.value / data.net_worth_nok * 100) : 0;
+    reStats.innerHTML = `
+      <div><strong>Real Estate:</strong> ${nok(data.real_estate.value)} NOK</div>
+      <div><strong>Rest of Portfolio:</strong> ${nok(data.total_value_nok)} NOK</div>
+      <div><strong>Split:</strong> ${rePct.toFixed(1)}% / ${(100 - rePct).toFixed(1)}%</div>
+      <div><strong>Total Net Worth:</strong> ${nok(data.net_worth_nok)} NOK</div>
+      <div><strong>Predicted Increase:</strong> ${growth}</div>
+    `;
+  } else {
+    reStats.innerHTML = `<div class="reason">No real estate added yet — add one from the holdings form as "real estate".</div>`;
+  }
 
   // Update chart
   const categories = Object.keys(data.by_category);
@@ -316,7 +338,7 @@ async function loadAllocation() {
   allocationChart = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels: categories.map(c => c.toUpperCase()),
+      labels: categories.map(c => c.replace("_", " ").toUpperCase()),
       datasets: [{
         data: values,
         backgroundColor: categories.map(c => colors[c] || "#ff00ff"),
@@ -363,7 +385,7 @@ function renderRecommendation(data) {
   </div>`;
 }
 
-document.getElementById("recommend-btn").addEventListener("click", async () => {
+async function loadRecommendation() {
   const btn = document.getElementById("recommend-btn");
   const result = document.getElementById("recommend-result");
   btn.disabled = true;
@@ -378,7 +400,9 @@ document.getElementById("recommend-btn").addEventListener("click", async () => {
     btn.disabled = false;
     btn.textContent = "Re-run";
   }
-});
+}
+
+document.getElementById("recommend-btn").addEventListener("click", loadRecommendation);
 
 async function loadPortfolioValue() {
   const res = await fetch(`${API}/portfolio-history?days=${currentValueTimeframe}`);
@@ -592,6 +616,7 @@ document.getElementById("holding-form").addEventListener("submit", async (e) => 
       asset_type: form.get("asset_type"),
       quantity: parseFloat(form.get("quantity")),
       avg_price: parseFloat(form.get("avg_price")),
+      annual_growth_pct: form.get("annual_growth_pct") ? parseFloat(form.get("annual_growth_pct")) : null,
     }),
   });
   e.target.reset();
@@ -617,6 +642,7 @@ document.getElementById("watchlist-form").addEventListener("submit", async (e) =
 loadDashboard();
 loadPerformance();
 loadPortfolioValue();
+loadRecommendation();
 setInterval(loadDashboard, 60000);
 setInterval(loadPerformance, 60000);
 setInterval(loadPortfolioValue, 60000);

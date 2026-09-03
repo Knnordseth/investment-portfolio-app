@@ -131,6 +131,22 @@ button:hover {
   color: var(--red);
 }
 
+.top-row {
+  display: flex;
+  gap: 24px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+.top-row .panel {
+  margin-bottom: 24px;
+}
+
+.allocation-panel,
+.real-estate-panel {
+  flex: 1 1 0;
+}
+
 .allocation-row {
   display: flex;
   gap: 32px;

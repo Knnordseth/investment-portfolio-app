@@ -38,9 +38,10 @@ def startup():
 
 class HoldingIn(BaseModel):
     symbol: str
-    asset_type: Literal["stock", "crypto"]
+    asset_type: Literal["stock", "crypto", "real_estate"]
     quantity: float
     avg_price: float
+    annual_growth_pct: float | None = None
 
 
 class WatchlistIn(BaseModel):
@@ -79,7 +80,14 @@ def get_holdings():
 
 @app.post("/api/holdings")
 def create_holding(holding: HoldingIn):
-    holding_id = db.add_holding(holding.symbol, holding.asset_type, holding.quantity, holding.avg_price)
+    holding_id = db.add_holding(
+        holding.symbol,
+        holding.asset_type,
+        holding.quantity,
+        holding.avg_price,
+        category=holding.asset_type,
+        annual_growth_pct=holding.annual_growth_pct,
+    )
     return {"id": holding_id}
 
 
@@ -139,6 +147,11 @@ def dashboard():
                 price = item["nordnet_market_value"] / item["quantity"]
                 note = "live price unavailable — using last known Nordnet value from import"
             return {**item, "latest_price": price, "signals": [], "note": note}
+        if item.get("category") == "real_estate":
+            note = "manually-entered value — no buy/sell signals"
+            if item.get("annual_growth_pct") is not None:
+                note += f"; est. {item['annual_growth_pct']:+.1f}%/yr"
+            return {**item, "latest_price": item.get("avg_price"), "signals": [], "note": note}
         try:
             return {**item, **get_signals(item["symbol"], item["asset_type"])}
         except Exception as exc:  # keep one bad symbol from breaking the whole dashboard
@@ -160,6 +173,8 @@ def get_allocation():
             "total_value_nok": 0,
             "categories": {},
             "by_category": {"stock": {"count": 0, "value": 0, "percent": 0}, "fund": {"count": 0, "value": 0, "percent": 0}},
+            "real_estate": {"count": 0, "value": 0, "items": []},
+            "net_worth_nok": 0,
         }
     
     # Enrich with current prices or use Nordnet values
@@ -184,6 +199,13 @@ def get_allocation():
                 enriched.append({**h, "current_price": h["avg_price"], "value": value, "source": "avg"})
             continue
 
+        # Real estate has no market feed — it's a manually-entered value with an
+        # optional estimated annual appreciation, not something to price-check.
+        if h.get("category") == "real_estate":
+            value = h["quantity"] * h["avg_price"]
+            enriched.append({**h, "current_price": h["avg_price"], "value": value, "source": "manual"})
+            continue
+
         # Prefer Nordnet market value if available, otherwise fetch current price
         if h.get("nordnet_market_value") and h["nordnet_market_value"] > 0:
             value = h["nordnet_market_value"]
@@ -198,18 +220,24 @@ def get_allocation():
                 value = h["quantity"] * h["avg_price"]
                 enriched.append({**h, "current_price": h["avg_price"], "value": value, "source": "avg"})
     
+    # Real estate is illiquid and not part of the tradeable-portfolio mix the doughnut
+    # is meant to show, so it's split out: its value counts toward net worth but not
+    # toward the allocation percentages of stock/fund/crypto.
+    real_estate = [h for h in enriched if h.get("category") == "real_estate"]
+    enriched = [h for h in enriched if h.get("category") != "real_estate"]
+
     # Calculate values by category
     by_category = {}
     total_value = 0
-    
+
     for holding in enriched:
         category = holding.get("category", "stock")
         value = holding["value"]
         total_value += value
-        
+
         if category not in by_category:
             by_category[category] = {"count": 0, "value": 0, "items": []}
-        
+
         by_category[category]["count"] += 1
         by_category[category]["value"] += value
         by_category[category]["items"].append({
@@ -220,10 +248,24 @@ def get_allocation():
             "unrealized_gain": value - (holding["quantity"] * holding["avg_price"]),
             "source": holding.get("source", "unknown"),
         })
-    
-    # Calculate percentages
-    for category in by_category:
-        by_category[category]["percent"] = (by_category[category]["value"] / total_value * 100) if total_value > 0 else 0
+
+    for category, info in by_category.items():
+        info["percent"] = (info["value"] / total_value * 100) if total_value > 0 else 0
+
+    real_estate_value = sum(h["value"] for h in real_estate)
+    real_estate_info = {
+        "count": len(real_estate),
+        "value": round(real_estate_value, 2),
+        "items": [{
+            "symbol": h["symbol"],
+            "value": h["value"],
+            "annual_growth_pct": h.get("annual_growth_pct"),
+        } for h in real_estate],
+    }
+    growth_weighted = [(h["value"], h["annual_growth_pct"]) for h in real_estate if h.get("annual_growth_pct") is not None]
+    if growth_weighted:
+        weight_sum = sum(v for v, _ in growth_weighted)
+        real_estate_info["est_annual_growth_pct"] = sum(v * g for v, g in growth_weighted) / weight_sum if weight_sum else None
 
     # One row per day, overwritten on every call — this is how /api/portfolio-history
     # builds up over time, with no separate cron/scheduler needed for a local single-user app.
@@ -233,6 +275,8 @@ def get_allocation():
     return {
         "total_value_nok": round(total_value, 2),
         "by_category": by_category,
+        "real_estate": real_estate_info,
+        "net_worth_nok": round(total_value + real_estate_value, 2),
         "note": "Funds use live NAV from Yahoo Finance when available (falling back to the last Nordnet import, then GAV); other holdings prefer the last Nordnet import, falling back to live prices",
     }
 
